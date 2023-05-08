@@ -1,4 +1,4 @@
-# Synthetic Image Segmentation
+# Synthetic Image Segmentation with Domain Adaptation
 
 This repository contains the code and resources for the research project on Synthetic Image Segmentation. The goal of the project is to perform image segmentation on simulated data and use domain adaptation techniques to generalize the model to real-world data.
 
