@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader, Dataset, random_split
 from torchvision.transforms import Compose, Resize, ToTensor
 from tqdm import tqdm
 
-from .base import DatasetBase
+from base import DatasetBase
 
 
 class NYUDv2(DatasetBase):

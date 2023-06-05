@@ -1,7 +1,7 @@
 import os
 import pytorch_lightning as pl
 
-from pytorch_lightning.utilities.seed import seed_everything
+from pytorch_lightning import seed_everything
 
 class DatasetBase(pl.LightningDataModule):
     def __init__(self, data_root, seed=42, *args, **kwargs):

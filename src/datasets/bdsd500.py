@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader, Dataset
 from torchvision.transforms import Compose, Resize, ToTensor
 from tqdm import tqdm
 
-from .base import DatasetBase
+from base import DatasetBase
 
 
 class BDSD500(DatasetBase):
@@ -140,9 +140,10 @@ class BDSD500(DatasetBase):
 
 class BDSD500Dataset(Dataset):
     def __init__(self, image_paths, segmentation_paths, transform=None):
-        self.image_paths = image_paths # List of image paths
-        self.segmentation_paths = segmentation_paths # List of segmentation paths
-        self.transform = transform # Transform to apply to the images and segmentations
+        self.image_paths = image_paths
+        self.segmentation_paths = segmentation_paths
+        self.transform = transform
+        self.to_tensor = ToTensor()  # Add this line
 
     def __len__(self):
         return len(self.image_paths)
@@ -154,10 +155,12 @@ class BDSD500Dataset(Dataset):
 
         segmentation_path = self.segmentation_paths[idx]
         with Image.open(segmentation_path) as seg:
-            segmentation = seg
+            segmentation = seg.convert('L')  # convert to grayscale
 
         if self.transform:
             image = self.transform(image)
             segmentation = self.transform(segmentation)
 
-        return image, segmentation
+        return self.to_tensor(image), self.to_tensor(segmentation)
+
+
