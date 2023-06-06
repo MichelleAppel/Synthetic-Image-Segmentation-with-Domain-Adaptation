@@ -7,26 +7,25 @@ import numpy as np
 from PIL import Image
 from skimage.segmentation import find_boundaries
 from torch.utils.data import DataLoader, Dataset, random_split
-from torchvision.transforms import Compose, Resize, ToTensor
 from tqdm import tqdm
 
-from base import DatasetBase
+from transforms import Transform
+
+import pytorch_lightning as pl
 
 
-class NYUDv2(DatasetBase):
-    def __init__(self, data_root, 
-                 train_val_test_split=(0.7, 0.2, 0.1), 
-                 batch_size=4, 
-                 num_workers=1, 
-                 *args, **kwargs):
-        super().__init__(data_root, *args, **kwargs)
+class NYUDv2Dataset(Dataset):
+    def __init__(self, data_root, size=(480, 640)):
+
+        self.data_root = data_root
         self.filename = "nyu_depth_v2_labeled.mat"
         self.url = "https://horatio.cs.nyu.edu/mit/silberman/nyu_depth_v2/nyu_depth_v2_labeled.mat"
-        self.train_val_test_split = train_val_test_split
-        self.input_height = 480
-        self.input_width = 640
-        self.batch_size = batch_size
-        self.num_workers = num_workers
+        
+        self.size = size
+        self.transforms = Transform(self.size)
+
+        self.image_paths = []
+        self.edges_paths = []
 
     def download(self, verify_ssl=False):
         # Check if the file is already downloaded
@@ -85,6 +84,10 @@ class NYUDv2(DatasetBase):
         return edges
 
     def setup(self):
+        # Download the dataset if not already downloaded
+        if not os.path.exists(os.path.join(self.data_root, self.filename)):
+            self.download()
+
         # Load the dataset if not already loaded
         if not os.path.exists(os.path.join(self.data_root, "images")):
             self.prepare_data()
@@ -93,51 +96,9 @@ class NYUDv2(DatasetBase):
         image_dir = os.path.join(self.data_root, "images")
         edges_dir = os.path.join(self.data_root, "edges")
 
-        image_paths = sorted([os.path.join(image_dir, f) for f in os.listdir(image_dir) if f.endswith(".png")])
-        edges_paths = sorted([os.path.join(edges_dir, f) for f in os.listdir(edges_dir) if f.endswith(".png")])
-
-        # Split the dataset into train, validation, and test sets
-        num_samples = len(image_paths)
-        train_size = int(self.train_val_test_split[0] * num_samples)
-        val_size = int(self.train_val_test_split[1] * num_samples)
-
-        self.train_image_paths = image_paths[:train_size]
-        self.train_edges_paths = edges_paths[:train_size]
-
-        self.val_image_paths = image_paths[train_size:train_size + val_size]
-        self.val_edges_paths = edges_paths[train_size:train_size + val_size]
-
-        self.test_image_paths = image_paths[train_size + val_size:]
-        self.test_edges_paths = edges_paths[train_size + val_size:]
-
-    def train_dataloader(self):
-            train_dataset = self._create_dataset(self.train_image_paths, self.train_edges_paths)
-            return DataLoader(train_dataset, batch_size=self.batch_size, shuffle=True, num_workers=self.num_workers)
-
-    def val_dataloader(self):
-        val_dataset = self._create_dataset(self.val_image_paths, self.val_edges_paths)
-        return DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers)
-
-    def test_dataloader(self):
-        test_dataset = self._create_dataset(self.test_image_paths, self.test_edges_paths)
-        return DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers)
-
-    def _create_dataset(self, image_paths, segmentation_paths):
-        transform = Compose([
-            Resize((self.input_height, self.input_width)),
-            ToTensor(),
-        ])
-
-        dataset = NYUDv2Dataset(image_paths=image_paths, segmentation_paths=segmentation_paths, transform=transform)
-        return dataset
-
-class NYUDv2Dataset(Dataset):
-    ''' Dataset class for the NYUDv2 dataset '''
-    def __init__(self, image_paths, segmentation_paths, transform=None):
-        self.image_paths = image_paths # List of image paths
-        self.segmentation_paths = segmentation_paths # List of segmentation paths
-        self.transform = transform # Transform to apply to the images and segmentations
-
+        self.image_paths = sorted([os.path.join(image_dir, f) for f in os.listdir(image_dir) if f.endswith(".png")])
+        self.edges_paths = sorted([os.path.join(edges_dir, f) for f in os.listdir(edges_dir) if f.endswith(".png")])
+        
     def __len__(self):
         return len(self.image_paths)
 
@@ -145,11 +106,40 @@ class NYUDv2Dataset(Dataset):
         image_path = self.image_paths[idx]
         image = Image.open(image_path).convert("RGB")
 
-        segmentation_path = self.segmentation_paths[idx]
-        segmentation = Image.open(segmentation_path)
+        edges_path = self.edges_paths[idx]
+        edges = Image.open(edges_path)
 
-        if self.transform:
-            image = self.transform(image)
-            segmentation = self.transform(segmentation)
+        data = [image, edges]
 
-        return image, segmentation
+        # Apply transforms
+        if self.transforms:
+            data = self.transforms(data)
+
+        return data
+
+class NYUDv2DataModule(pl.LightningDataModule):
+    def __init__(self, dataset, batch_size=1, num_workers=0, shuffle=True, split=(0.7, 0.15, 0.15)):
+        super().__init__()
+        self.batch_size = batch_size
+        self.num_workers = num_workers
+        self.shuffle = shuffle
+        self.dataset = dataset
+        self.split = split
+
+        self.setup()
+
+    def setup(self):
+        train_len = int(self.split[0] * len(self.dataset))
+        val_len = int(self.split[1] * len(self.dataset))
+        test_len = len(self.dataset) - train_len - val_len
+
+        self.train_dataset, self.val_dataset, self.test_dataset = random_split(self.dataset, [train_len, val_len, test_len])
+
+    def train_dataloader(self):
+        return DataLoader(self.train_dataset, batch_size=self.batch_size, num_workers=self.num_workers, shuffle=self.shuffle)
+    
+    def val_dataloader(self):
+        return DataLoader(self.val_dataset, batch_size=self.batch_size, num_workers=self.num_workers)
+    
+    def test_dataloader(self):
+        return DataLoader(self.test_dataset, batch_size=self.batch_size, num_workers=self.num_workers)

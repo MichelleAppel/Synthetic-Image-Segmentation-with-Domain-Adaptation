@@ -1,14 +1,17 @@
 import socket
 import io
 from PIL import Image
-from torchvision import transforms
 from torch.utils.data import Dataset, DataLoader
 import pytorch_lightning as pl
 import struct
 import threading
 
+from transforms import Transform
+
+from torch.utils.data.sampler import SubsetRandomSampler
+
 class UnityDataset(Dataset):
-    def __init__(self, host="127.0.0.1", port=8093, epoch_length=10):
+    def __init__(self, host="127.0.0.1", port=8093, epoch_length=10000, size=(480, 640)):
         self.host = host
         self.port = port
         self.epoch_length = epoch_length
@@ -16,12 +19,9 @@ class UnityDataset(Dataset):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.connect((self.host, self.port))
 
-        self.transforms = transforms.Compose([
-            transforms.Resize((480, 640)),
-            transforms.RandomHorizontalFlip(),
-            transforms.RandomCrop((480, 640)),
-            transforms.ToTensor(),
-        ])
+        self.size = size
+
+        self.transforms = Transform(self.size)
 
         self.socket_lock = threading.Lock()
 
@@ -34,17 +34,25 @@ class UnityDataset(Dataset):
         return self.epoch_length
 
     def __getitem__(self, index):
-        # TODO: Index should be used to request a specific image
+        # Convert index to string and send it as bytes
+        index_string = str(index)
+        self.socket.sendall(index_string.encode('utf-8'))
+
         data = self._receive_images()
-        rgb_img = data[0]
-        outline_img = data[1]
-        return self.transforms(rgb_img), self.transforms(outline_img)
+
+        # Apply transforms
+        data = self.transforms(data)
+
+        return data
 
     def _receive_images(self):
-        self.socket.sendall(b'capture')
-
         images = []
-        for i in range(self.n_cameras):
+
+        # First, receive the number of cameras
+        num_cameras_data = self.socket.recv(4)
+        num_cameras = struct.unpack('!I', num_cameras_data)[0]  # Network byte order is big endian
+
+        for _ in range(num_cameras):
             # Receive the length of the image data
             length_data = self.socket.recv(4)
             if not length_data:
@@ -78,14 +86,25 @@ class UnityDataset(Dataset):
 
         return images
 
-
-
 class UnityDataModule(pl.LightningDataModule):
-    def __init__(self, dataset, batch_size=1, num_workers=0, *args, **kwargs):
+    def __init__(self, dataset, batch_size=1, num_workers=0, shuffle=True, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.dataset = dataset
         self.batch_size = batch_size
         self.num_workers = num_workers
+        self.shuffle = shuffle
 
     def train_dataloader(self):
-        return DataLoader(self.dataset, batch_size=self.batch_size, num_workers=self.num_workers)
+        indices = list(range(len(self.dataset)))
+        return DataLoader(self.dataset, batch_size=self.batch_size, num_workers=self.num_workers,
+                          sampler=SubsetRandomSampler(indices), shuffle=False)
+
+    def val_dataloader(self):
+        indices = list(range(len(self.dataset), 2 * len(self.dataset)))
+        return DataLoader(self.dataset, batch_size=self.batch_size, num_workers=self.num_workers,
+                          sampler=SubsetRandomSampler(indices), shuffle=False)
+
+    def test_dataloader(self):
+        indices = list(range(2 * len(self.dataset), 3 * len(self.dataset)))
+        return DataLoader(self.dataset, batch_size=self.batch_size, num_workers=self.num_workers,
+                          sampler=SubsetRandomSampler(indices), shuffle=False)

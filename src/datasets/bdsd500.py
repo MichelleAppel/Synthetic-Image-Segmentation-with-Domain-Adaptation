@@ -1,31 +1,30 @@
 import os
-import ssl
 from urllib.request import urlretrieve
 
 import numpy as np
 import scipy
 from PIL import Image
 from skimage.segmentation import find_boundaries
-from torch.utils.data import DataLoader, Dataset
-from torchvision.transforms import Compose, Resize, ToTensor
+from torch.utils.data import DataLoader, Dataset, random_split
 from tqdm import tqdm
 
-from base import DatasetBase
+from transforms import Transform
 
+import pytorch_lightning as pl
 
-class BDSD500(DatasetBase):
-    def __init__(self, data_root, 
-                 train_val_test_split=(0.6, 0.2, 0.2), 
-                 batch_size=4, 
-                 num_workers=1, 
-                 *args, 
-                 **kwargs):
-        super().__init__(data_root, *args, **kwargs)
+class BDSD500Dataset(Dataset):
+    def __init__(self, data_root, size=(321, 321)):
+
+        self.data_root = data_root
         self.filename = "BSR_bsds500.tgz"
         self.url = "https://www2.eecs.berkeley.edu/Research/Projects/CS/vision/grouping/BSR/BSR_bsds500.tgz"
-        self.train_val_test_split = train_val_test_split
-        self.batch_size = batch_size
-        self.num_workers = num_workers
+
+        self.size = size
+
+        self.transforms = Transform(self.size)
+
+        self.image_paths = []
+        self.edges_paths = []
 
     def download(self):
         # Check if the file is already downloaded
@@ -36,8 +35,6 @@ class BDSD500(DatasetBase):
 
             # Download the file with a progress bar
             urlretrieve(self.url, file_path, self._progress_bar)
-
-        
 
     def _progress_bar(self, count, block_size, total_size):
         progress = count * block_size / total_size * 100
@@ -101,66 +98,53 @@ class BDSD500(DatasetBase):
         edges_dir = os.path.join(self.data_root, "edges")
 
         # Get all image and edge paths
-        image_paths = [os.path.join(image_dir, image_name) for image_name in os.listdir(image_dir)]
-        edge_paths = [os.path.join(edges_dir, image_name.replace(".jpg", ".png")) for image_name in os.listdir(image_dir)]
-
-        # Shuffle the paths
-        image_paths = np.array(image_paths)
-        edge_paths = np.array(edge_paths)
-        indices = np.arange(len(image_paths))
-        np.random.shuffle(indices)
-        image_paths = image_paths[indices]
-        edge_paths = edge_paths[indices]
-
-        # Split the paths into train, val, and test sets
-        train_val_split = int(len(image_paths) * self.train_val_test_split[0])
-        val_test_split = int(len(image_paths) * (self.train_val_test_split[0] + self.train_val_test_split[1]))
-
-        self.train_image_paths = image_paths[:train_val_split]
-        self.train_edges_paths = edge_paths[:train_val_split]
-        self.val_image_paths = image_paths[train_val_split:val_test_split]
-        self.val_edges_paths = edge_paths[train_val_split:val_test_split]
-        self.test_image_paths = image_paths[val_test_split:]
-        self.test_edges_paths = edge_paths[val_test_split:]
-
-    def train_dataloader(self):
-        train_dataset = self._create_dataset(self.train_image_paths, self.train_edges_paths)
-        return DataLoader(train_dataset, batch_size=self.batch_size, shuffle=True, num_workers=self.num_workers)
-
-    def val_dataloader(self):
-        val_dataset = self._create_dataset(self.val_image_paths, self.val_edges_paths)
-        return DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers)
-
-    def test_dataloader(self):
-        test_dataset = self._create_dataset(self.test_image_paths, self.test_edges_paths)
-        return DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers)
-    
-    def _create_dataset(self, image_paths, edge_paths):
-        return BDSD500Dataset(image_paths, edge_paths)
-
-class BDSD500Dataset(Dataset):
-    def __init__(self, image_paths, segmentation_paths, transform=None):
-        self.image_paths = image_paths
-        self.segmentation_paths = segmentation_paths
-        self.transform = transform
-        self.to_tensor = ToTensor()  # Add this line
+        self.image_paths = [os.path.join(image_dir, image_name) for image_name in os.listdir(image_dir)]
+        self.edges_paths = [os.path.join(edges_dir, edge_name) for edge_name in os.listdir(edges_dir)]
 
     def __len__(self):
         return len(self.image_paths)
 
     def __getitem__(self, idx):
         image_path = self.image_paths[idx]
+        edge_path = self.edges_paths[idx]
+
         with Image.open(image_path) as img:
             image = img.convert("RGB")
 
-        segmentation_path = self.segmentation_paths[idx]
-        with Image.open(segmentation_path) as seg:
-            segmentation = seg.convert('L')  # convert to grayscale
+        with Image.open(edge_path) as seg:
+            edge = seg.convert('L')  # convert to grayscale
 
-        if self.transform:
-            image = self.transform(image)
-            segmentation = self.transform(segmentation)
+        data = [image, edge]
 
-        return self.to_tensor(image), self.to_tensor(segmentation)
+        if self.transforms:
+            data = self.transforms(data)
+
+        return data
 
 
+class BDSD500DataModule(pl.LightningDataModule):
+    def __init__(self, dataset, batch_size=4, num_workers=1, shuffle=True, split=(0.7, 0.1, 0.2)):
+        super().__init__()
+        self.batch_size = batch_size
+        self.num_workers = num_workers
+        self.shuffle = shuffle
+        self.dataset = dataset
+        self.split = split
+
+        self.setup()
+
+    def setup(self):
+        train_len = int(self.split[0] * len(self.dataset))
+        val_len = int(self.split[1] * len(self.dataset))
+        test_len = len(self.dataset) - train_len - val_len
+
+        self.train_dataset, self.val_dataset, self.test_dataset = random_split(self.dataset, [train_len, val_len, test_len])
+
+    def train_dataloader(self):
+        return DataLoader(self.train_dataset, batch_size=self.batch_size, num_workers=self.num_workers, shuffle=self.shuffle)
+
+    def val_dataloader(self):
+        return DataLoader(self.val_dataset, batch_size=self.batch_size, num_workers=self.num_workers)
+
+    def test_dataloader(self):
+        return DataLoader(self.test_dataset, batch_size=self.batch_size, num_workers=self.num_workers)
