@@ -9,13 +9,15 @@ from skimage.segmentation import find_boundaries
 from torch.utils.data import DataLoader, Dataset, random_split
 from tqdm import tqdm
 
-from transforms import Transform
+import torch
+from torchvision.io import read_image
+from src.datasets.transforms import Transform
 
 import pytorch_lightning as pl
 
 
 class NYUDv2Dataset(Dataset):
-    def __init__(self, data_root, size=(480, 640)):
+    def __init__(self, data_root, size=(480, 640), border=4):
 
         self.data_root = data_root
         self.filename = "nyu_depth_v2_labeled.mat"
@@ -23,9 +25,12 @@ class NYUDv2Dataset(Dataset):
         
         self.size = size
         self.transforms = Transform(self.size)
+        self.border = border
 
         self.image_paths = []
         self.edges_paths = []
+
+        self.setup()
 
     def download(self, verify_ssl=False):
         # Check if the file is already downloaded
@@ -103,11 +108,18 @@ class NYUDv2Dataset(Dataset):
         return len(self.image_paths)
 
     def __getitem__(self, idx):
+        # Open the image file
         image_path = self.image_paths[idx]
-        image = Image.open(image_path).convert("RGB")
+        image = read_image(image_path).to(torch.float32) / 255.0
 
+        # Open the edges file
         edges_path = self.edges_paths[idx]
-        edges = Image.open(edges_path)
+        edges = read_image(edges_path).to(torch.float32) / 255.0
+
+        # Crop the outer 8 pixels of each image
+        border = 8
+        image = image[:, border:-border, border:-border]
+        edges = edges[:, border:-border, border:-border]
 
         data = [image, edges]
 

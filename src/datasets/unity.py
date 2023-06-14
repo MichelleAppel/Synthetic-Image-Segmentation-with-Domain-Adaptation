@@ -6,12 +6,16 @@ import pytorch_lightning as pl
 import struct
 import threading
 
-from transforms import Transform
+import torch
+
+from src.datasets.transforms import Transform
 
 from torch.utils.data.sampler import SubsetRandomSampler
 
+from torchvision.io import decode_image
+
 class UnityDataset(Dataset):
-    def __init__(self, host="127.0.0.1", port=8093, epoch_length=10000, size=(480, 640)):
+    def __init__(self, host="127.0.0.1", port=8093, epoch_length=10000, size=(480, 640), cat=False):
         self.host = host
         self.port = port
         self.epoch_length = epoch_length
@@ -23,7 +27,9 @@ class UnityDataset(Dataset):
 
         self.transforms = Transform(self.size)
 
-        self.socket_lock = threading.Lock()
+        # self.socket_lock = threading.Lock()
+
+        self.cat = False
 
     def __del__(self):
         # Make sure to close the socket connection when the dataset is deleted
@@ -42,6 +48,9 @@ class UnityDataset(Dataset):
 
         # Apply transforms
         data = self.transforms(data)
+
+        if self.cat:
+            data = torch.cat(data, dim=0)
 
         return data
 
@@ -72,7 +81,15 @@ class UnityDataset(Dataset):
             if len(received_data) < length:
                 break  # Incomplete data received
 
-            image = Image.open(io.BytesIO(received_data)).convert("RGB")
+            tensor_data = torch.tensor(bytearray(received_data), dtype=torch.uint8)
+            image = decode_image(tensor_data) / 255.0
+
+            if image.ndim == 2:
+                image = image.unsqueeze(0)  # Add a dimension for grayscale images
+
+            if image.shape[0] == 4:
+                image = image[:3]  # Remove the alpha channel
+
             images.append(image)
 
             marker = self.socket.recv(3)

@@ -7,8 +7,10 @@ from PIL import Image
 from skimage.segmentation import find_boundaries
 from torch.utils.data import DataLoader, Dataset, random_split
 from tqdm import tqdm
+from torchvision.io import read_image
+import torch
 
-from transforms import Transform
+from src.datasets.transforms import Transform
 
 import pytorch_lightning as pl
 
@@ -25,6 +27,8 @@ class BDSD500Dataset(Dataset):
 
         self.image_paths = []
         self.edges_paths = []
+
+        self.setup()
 
     def download(self):
         # Check if the file is already downloaded
@@ -105,17 +109,17 @@ class BDSD500Dataset(Dataset):
         return len(self.image_paths)
 
     def __getitem__(self, idx):
+        # Open the image file
         image_path = self.image_paths[idx]
-        edge_path = self.edges_paths[idx]
+        image = read_image(image_path).to(torch.float32) / 255.0
 
-        with Image.open(image_path) as img:
-            image = img.convert("RGB")
+        # Open the edges file
+        edges_path = self.edges_paths[idx]
+        edges = read_image(edges_path).to(torch.float32) / 255.0
 
-        with Image.open(edge_path) as seg:
-            edge = seg.convert('L')  # convert to grayscale
+        data = [image, edges]
 
-        data = [image, edge]
-
+        # Apply transforms
         if self.transforms:
             data = self.transforms(data)
 
