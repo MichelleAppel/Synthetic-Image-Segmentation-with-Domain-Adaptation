@@ -17,14 +17,15 @@ import pytorch_lightning as pl
 
 
 class NYUDv2Dataset(Dataset):
-    def __init__(self, data_root, size=(480, 640), border=4):
+    def __init__(self, data_root, resize=(480, 640), crop_size=(480, 480), border=4):
 
         self.data_root = data_root
         self.filename = "nyu_depth_v2_labeled.mat"
         self.url = "https://horatio.cs.nyu.edu/mit/silberman/nyu_depth_v2/nyu_depth_v2_labeled.mat"
         
-        self.size = size
-        self.transforms = Transform(self.size)
+        self.resize = resize
+        self.crop_size = crop_size
+        self.transforms = Transform(self.resize, self.crop_size)
         self.border = border
 
         self.image_paths = []
@@ -108,6 +109,7 @@ class NYUDv2Dataset(Dataset):
         return len(self.image_paths)
 
     def __getitem__(self, idx):
+
         # Open the image file
         image_path = self.image_paths[idx]
         image = read_image(image_path).to(torch.float32) / 255.0

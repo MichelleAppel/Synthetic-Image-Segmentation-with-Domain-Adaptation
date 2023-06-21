@@ -1,20 +1,31 @@
 import random
+import torch.nn.functional as F
 
 class Transform:
-    def __init__(self, size):
-        self.size = size
+    def __init__(self, resize=False, crop_size=False, flip=True):
+        self.resize = resize
+        self.crop_size = crop_size
+        self.flip = flip
 
     def __call__(self, data):
         data = list(data)
-        i, j = self.get_params(data[0], output_size=self.size)
 
-        for idx in range(len(data)):
-            data[idx] = self.crop(data[idx], i, j, self.size[0], self.size[1])
-
-        # Apply the random horizontal flip to both images
-        if random.random() < 0.5:
+        if self.resize:
+            # Apply the resize to both images
             for idx in range(len(data)):
-                data[idx] = data[idx].flip(-1)
+                data[idx] = F.interpolate(data[idx].unsqueeze(0), size=self.resize, mode='bilinear', align_corners=False).squeeze(0)
+
+        if self.crop_size:
+            i, j = self.get_params(data[0], output_size=self.crop_size)
+
+            for idx in range(len(data)):
+                data[idx] = self.crop(data[idx], i, j, self.crop_size[0], self.crop_size[1])
+
+        if self.flip:
+            # Apply the random horizontal flip to both images
+            if random.random() < 0.5:
+                for idx in range(len(data)):
+                    data[idx] = data[idx].flip(-1)
 
         return data
 

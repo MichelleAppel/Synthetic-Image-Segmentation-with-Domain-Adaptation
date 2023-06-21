@@ -2,6 +2,7 @@ import os
 os.environ['KMP_DUPLICATE_LIB_OK']='True'
 
 import pytorch_lightning as pl
+
 from pytorch_lightning.loggers import WandbLogger
 from omegaconf import DictConfig
 import hydra
@@ -13,18 +14,20 @@ from src.datasets.unpaired import UnpairedDataset, UnpairedDataModule
 
 @hydra.main(config_path="config", config_name="config", version_base="1.1.0")
 def main(cfg: DictConfig) -> None:
-    # Create a PyTorch Lightning trainer with the generation callback
-    trainer = pl.Trainer(logger=WandbLogger(project='CycleGAN', config=cfg), 
-                         max_epochs=cfg.train.epochs, 
-                         devices=cfg.train.gpus)
+    pl.seed_everything(42)
 
     # Create model
     model = CycleGAN()
 
+    # Create a PyTorch Lightning trainer with the generation callback
+    wandb_logger = WandbLogger(project='CycleGAN', config=cfg)
+    wandb_logger.watch(model)
+    trainer = pl.Trainer(logger=wandb_logger, max_epochs=cfg.train.epochs, devices=cfg.train.gpus)
+
     # Create datasets
-    # dataset_a = UnityDataset(epoch_length=1449, port=8093, size=(256, 256))
-    dataset_a = BDSD500Dataset(cfg.data.root_bdsd500, size=(256, 256))
-    dataset_b = NYUDv2Dataset(cfg.data.root_nyudv2, size=(256, 256))
+    # dataset_a = BDSD500Dataset(cfg.data.root_bdsd500, resize=tuple(cfg.data.resize), crop_size=tuple(cfg.data.crop_size))
+    dataset_a = UnityDataset(resize=tuple(cfg.data.resize), crop_size=tuple(cfg.data.crop_size))
+    dataset_b = NYUDv2Dataset(cfg.data.root_nyudv2, resize=tuple(cfg.data.resize), crop_size=tuple(cfg.data.crop_size))
 
     # Create unpaired dataset
     unpaired_dataset = UnpairedDataset(dataset_a, dataset_b, mode='train')

@@ -15,15 +15,16 @@ from src.datasets.transforms import Transform
 import pytorch_lightning as pl
 
 class BDSD500Dataset(Dataset):
-    def __init__(self, data_root, size=(321, 321)):
+    def __init__(self, data_root, resize=(480, 640), crop_size=(480, 480),):
 
         self.data_root = data_root
         self.filename = "BSR_bsds500.tgz"
         self.url = "https://www2.eecs.berkeley.edu/Research/Projects/CS/vision/grouping/BSR/BSR_bsds500.tgz"
 
-        self.size = size
+        self.resize = resize
+        self.crop_size = crop_size
 
-        self.transforms = Transform(self.size)
+        self.transforms = Transform(resize=self.resize, crop_size=self.crop_size)
 
         self.image_paths = []
         self.edges_paths = []

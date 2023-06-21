@@ -15,10 +15,14 @@ from torch.optim.lr_scheduler import LambdaLR
 from torch.nn import functional as F
 import itertools
 import pytorch_lightning as pl
+from torchvision import transforms
+from torchvision.utils import make_grid
 
 from src.domain_adaptation.models import patch_discriminator
 from src.domain_adaptation.models import resnet_generator
 from src.domain_adaptation.utils import ImagePool, init_weights, set_requires_grad
+
+import wandb
 
 class CycleGAN(pl.LightningModule):
     def __init__(self):
@@ -97,7 +101,7 @@ class CycleGAN(pl.LightningModule):
         # gather all losses
         extraLoss = cycleLoss + 0.5 * identityLoss
         self.genLoss = mseGenA + mseGenB + self.lm * extraLoss
-        self.log('gen_loss', self.genLoss.item(), on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        self.log('gen_loss', self.genLoss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
 
         # store detached generated images
         self.fakeA = fakeA.detach()
@@ -106,6 +110,19 @@ class CycleGAN(pl.LightningModule):
         self.manual_backward(self.genLoss)
         opt_gen.step()
         opt_gen.zero_grad()
+
+
+        # Convert images to PyTorch tensors and add a batch dimension
+        images = [imgA[0].unsqueeze(0), fakeB[0].unsqueeze(0), cycledA[0].unsqueeze(0), sameA[0].unsqueeze(0), 
+                  imgB[0].unsqueeze(0), fakeA[0].unsqueeze(0),cycledB[0].unsqueeze(0), sameB[0].unsqueeze(0)]
+        
+
+        # Create a grid of images
+        grid = make_grid(torch.vstack(images), nrow=4)  # Adjust 'nrow' as needed
+        grid = transforms.ToPILImage()(grid)
+
+        # Log the grid of images to W&B
+        wandb.log({"Images": wandb.Image(grid, caption="Images")})
 
         return self.genLoss
 
@@ -131,7 +148,7 @@ class CycleGAN(pl.LightningModule):
 
         # gather all losses
         self.disLoss = 0.5 * (mseFakeA + mseRealA + mseFakeB + mseRealB)
-        self.log('dis_loss', self.disLoss.item(), on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        self.log('dis_loss', self.disLoss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
 
         self.manual_backward(self.disLoss)
         opt_dis.step()
@@ -152,6 +169,9 @@ class CycleGAN(pl.LightningModule):
         # Discriminator training step
         set_requires_grad([self.disX, self.disY], True)
         loss_dis = self.discriminator_training_step(imgA, imgB, opt_dis)
+
+        wandb.log({"Generator loss": self.genLoss.item()})
+        wandb.log({"Discriminator loss": self.disLoss.item()})
 
         return {'loss': loss_gen + loss_dis}
 
