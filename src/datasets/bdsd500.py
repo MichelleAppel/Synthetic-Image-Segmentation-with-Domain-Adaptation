@@ -15,7 +15,7 @@ from src.datasets.transforms import Transform
 import pytorch_lightning as pl
 
 class BDSD500Dataset(Dataset):
-    def __init__(self, data_root, resize=(480, 640), crop_size=(480, 480),):
+    def __init__(self, data_root, resize=None, crop_size=(321, 321)):
 
         self.data_root = data_root
         self.filename = "BSR_bsds500.tgz"
