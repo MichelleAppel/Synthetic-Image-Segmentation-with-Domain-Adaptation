@@ -49,11 +49,11 @@ def ConvTranposeBlock(channels_out):
     )
 
 
-def get_generator():
+def get_generator(input_nc=3, output_nc=3):
     model = nn.Sequential(
         # first block uses reflection padding and instance norm
         nn.ReflectionPad2d(3),
-        nn.Conv2d(3, 64, kernel_size=7, stride=1),
+        nn.Conv2d(input_nc, 64, kernel_size=7, stride=1),
         nn.InstanceNorm2d(64),
         nn.ReLU(True),
         
@@ -68,7 +68,7 @@ def get_generator():
         
         # last block uses reflection padding but no normalization and tanh
         nn.ReflectionPad2d(3),
-        nn.Conv2d(64, 3, kernel_size=7, stride=1),
+        nn.Conv2d(64, output_nc, kernel_size=7, stride=1),
         nn.Tanh()
     )
     return model

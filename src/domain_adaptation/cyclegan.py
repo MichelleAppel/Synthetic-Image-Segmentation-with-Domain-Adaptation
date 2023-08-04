@@ -4,19 +4,8 @@ from torch.optim.lr_scheduler import LambdaLR
 from torch.nn import functional as F
 import itertools
 import pytorch_lightning as pl
-
-from src.domain_adaptation.models import patch_discriminator
-from src.domain_adaptation.models import resnet_generator
-from src.domain_adaptation.utils import ImagePool, init_weights, set_requires_grad
-
-import torch
-from torch.optim import Adam
-from torch.optim.lr_scheduler import LambdaLR
-from torch.nn import functional as F
-import itertools
-import pytorch_lightning as pl
-from torchvision import transforms
 from torchvision.utils import make_grid
+from torchvision import transforms
 
 from src.domain_adaptation.models import patch_discriminator
 from src.domain_adaptation.models import resnet_generator
@@ -25,21 +14,32 @@ from src.domain_adaptation.utils import ImagePool, init_weights, set_requires_gr
 import wandb
 
 class CycleGAN(pl.LightningModule):
-    def __init__(self):
+    def __init__(self, input_nc_genX=4, output_nc_genX=3, input_nc_genY=3, output_nc_genY=4, log_interval=5):
         super().__init__()
         # generator pair
-        self.genX = resnet_generator.get_generator()
-        self.genY = resnet_generator.get_generator()
-        
+        self.genX = resnet_generator.get_generator(input_nc=input_nc_genX, output_nc=output_nc_genX)
+        self.genY = resnet_generator.get_generator(input_nc=input_nc_genY, output_nc=output_nc_genY)
+
         # discriminator pair
-        self.disX = patch_discriminator.get_model()
-        self.disY = patch_discriminator.get_model()
-        
-        self.lm = 10.0
+        self.disX = patch_discriminator.get_model(input_nc=3)
+        self.disY = patch_discriminator.get_model(input_nc=3)
+
+        # image pools
         self.fakePoolA = ImagePool()
         self.fakePoolB = ImagePool()
+
+        # hyperparameters
+        self.lm = 10.0
+        self.log_interval = log_interval
+
+        # losses
         self.genLoss = None
         self.disLoss = None
+
+        # Predefined tensors for efficiency
+        self.ones = None  # to be defined in the training step where we know the shape
+        self.zeros = None  # same as above
+        self.dummy_depth = None
 
         for m in [self.genX, self.genY, self.disX, self.disY]:
             init_weights(m)
@@ -47,6 +47,14 @@ class CycleGAN(pl.LightningModule):
         self.automatic_optimization = False
 
     def configure_optimizers(self):
+        """
+            Configure optimizers and schedulers
+            
+            Returns:
+                list: list of optimizers
+                list: list of schedulers
+        """
+
         optG = Adam(
             itertools.chain(self.genX.parameters(), self.genY.parameters()),
             lr=2e-4, betas=(0.5, 0.999))
@@ -64,32 +72,55 @@ class CycleGAN(pl.LightningModule):
         """
             According to the CycleGan paper, label for
             real is one and fake is zero.
+
+            Args:
+                predictions (torch.Tensor): predictions from discriminator
+                label (str): label for real or fake
+
+            Returns:
+                torch.Tensor: loss
         """
+        if self.ones is None or self.ones.shape != predictions.shape:
+            self.ones = torch.ones_like(predictions)
+            self.zeros = torch.zeros_like(predictions)
+
         if label.lower() == 'real':
-            target = torch.ones_like(predictions)
+            target = self.ones
         else:
-            target = torch.zeros_like(predictions)
+            target = self.zeros
         
         return F.mse_loss(predictions, target)
 
     def generator_training_step(self, imgA, imgB, opt_gen):
-
-        """cycle images - using only generator nets"""
+        """ Update Generator 
+        
+            Args:
+                imgA (torch.Tensor): images from domain A
+                imgB (torch.Tensor): images from domain B
+                opt_gen (torch.optim): optimizer for generator
+                
+            Returns:
+                torch.Tensor: loss
+        """
         fakeB = self.genX(imgA)
         cycledA = self.genY(fakeB)
 
         fakeA = self.genY(imgB)
         cycledB = self.genX(fakeA)
 
-        sameB = self.genX(imgB)
-        sameA = self.genY(imgA)
+        if self.dummy_depth is None or self.dummy_depth.shape != imgA[:, 3:4, :, :].shape:
+            self.dummy_depth = torch.zeros_like(imgA[:, 3:4, :, :])
+        img_B_depth = torch.cat([imgB, self.dummy_depth], dim=1)
+
+        sameB = self.genX(img_B_depth)
+        sameA = self.genY(imgA[:, :3, :, :])
 
         # generator genX must fool discrim disY so label is real = 1
         predFakeB = self.disY(fakeB)
         mseGenB = self.get_mse_loss(predFakeB, 'real')
 
         # generator genY must fool discrim disX so label is real
-        predFakeA = self.disX(fakeA)
+        predFakeA = self.disX(fakeA[:, :3, :, :])
         mseGenA = self.get_mse_loss(predFakeA, 'real')
 
         # compute extra losses
@@ -101,7 +132,6 @@ class CycleGAN(pl.LightningModule):
         # gather all losses
         extraLoss = cycleLoss + 0.5 * identityLoss
         self.genLoss = mseGenA + mseGenB + self.lm * extraLoss
-        self.log('gen_loss', self.genLoss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
 
         # store detached generated images
         self.fakeA = fakeA.detach()
@@ -111,32 +141,42 @@ class CycleGAN(pl.LightningModule):
         opt_gen.step()
         opt_gen.zero_grad()
 
+        if self.global_step % self.log_interval == 0:
+            self.log('gen_loss', self.genLoss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
 
-        # Convert images to PyTorch tensors and add a batch dimension
-        images = [imgA[0].unsqueeze(0), fakeB[0].unsqueeze(0), cycledA[0].unsqueeze(0), sameA[0].unsqueeze(0), 
-                  imgB[0].unsqueeze(0), fakeA[0].unsqueeze(0),cycledB[0].unsqueeze(0), sameB[0].unsqueeze(0)]
-        
+            # Convert images to PyTorch tensors and add a batch dimension
+            images = [imgA[0].unsqueeze(0)[:, :3, :, :], fakeB[0].unsqueeze(0)[:, :3, :, :], cycledA[0].unsqueeze(0)[:, :3, :, :], sameA[0].unsqueeze(0)[:, :3, :, :], 
+                    imgB[0].unsqueeze(0)[:, :3, :, :], fakeA[0].unsqueeze(0)[:, :3, :, :], cycledB[0].unsqueeze(0)[:, :3, :, :], sameB[0].unsqueeze(0)[:, :3, :, :]]
+            
+            # Create a grid of images
+            grid = make_grid(torch.vstack(images), nrow=4)  # Adjust 'nrow' as needed
+            grid = transforms.ToPILImage()(grid)
 
-        # Create a grid of images
-        grid = make_grid(torch.vstack(images), nrow=4)  # Adjust 'nrow' as needed
-        grid = transforms.ToPILImage()(grid)
-
-        # Log the grid of images to W&B
-        wandb.log({"Images": wandb.Image(grid, caption="Images")})
+            # Log the grid of images to W&B
+            wandb.log({"Images": wandb.Image(grid, caption="Images")})
 
         return self.genLoss
 
     def discriminator_training_step(self, imgA, imgB, opt_dis):
+        """ Update Discriminator
 
-        """Update Discriminator"""        
+            Args:
+                imgA (torch.Tensor): images from domain A
+                imgB (torch.Tensor): images from domain B
+                opt_dis (torch.optim): optimizer for discriminator
+
+            Returns:
+                torch.Tensor: loss
+        """
+
         fakeA = self.fakePoolA.query(self.fakeA)
         fakeB = self.fakePoolB.query(self.fakeB)
 
         # disX checks for domain A photos
-        predRealA = self.disX(imgA)
+        predRealA = self.disX(imgA[:, :3, :, :])
         mseRealA = self.get_mse_loss(predRealA, 'real')
 
-        predFakeA = self.disX(fakeA)
+        predFakeA = self.disX(fakeA[:, :3, :, :])
         mseFakeA = self.get_mse_loss(predFakeA, 'fake')
 
         # disY checks for domain B photos
@@ -148,15 +188,26 @@ class CycleGAN(pl.LightningModule):
 
         # gather all losses
         self.disLoss = 0.5 * (mseFakeA + mseRealA + mseFakeB + mseRealB)
-        self.log('dis_loss', self.disLoss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
 
         self.manual_backward(self.disLoss)
         opt_dis.step()
         opt_dis.zero_grad()
 
+        if self.global_step % self.log_interval == 0:
+            self.log('dis_loss', self.disLoss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+
         return self.disLoss
 
     def training_step(self, batch, batch_idx):
+        ''' Training step for CycleGAN
+        
+            Args:
+                batch (dict): batch of images from both domains
+                batch_idx (int): index of batch
+                
+            Returns:
+                dict: loss
+        '''
         imgA, imgB = batch['A'], batch['B']
 
         # Get the optimizers
@@ -170,8 +221,9 @@ class CycleGAN(pl.LightningModule):
         set_requires_grad([self.disX, self.disY], True)
         loss_dis = self.discriminator_training_step(imgA, imgB, opt_dis)
 
-        wandb.log({"Generator loss": self.genLoss.item()})
-        wandb.log({"Discriminator loss": self.disLoss.item()})
+        if self.global_step % self.log_interval == 0:
+            wandb.log({"Generator loss": self.genLoss.item()}, step=batch_idx)
+            wandb.log({"Discriminator loss": self.disLoss.item()}, step=batch_idx)
 
         return {'loss': loss_gen + loss_dis}
 

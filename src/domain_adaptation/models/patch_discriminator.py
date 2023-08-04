@@ -16,14 +16,14 @@ class DiscConvBlock(nn.Module):
     def forward(self, x):
         return self.block(x)
     
-def get_model():
+def get_model(input_nc=3):
     """
         Note that there is instance norm for first block
         and the stride is 2 for first 3 blocks and 1 for the last block.
         This is followed by a huge conv layer with again stride=1
     """
     model = nn.Sequential(
-        DiscConvBlock(3, 64, is_first=True),
+        DiscConvBlock(input_nc, 64, is_first=True),
         DiscConvBlock(64, 128),
         DiscConvBlock(128, 256),
         DiscConvBlock(256, 512, stride=1),

@@ -9,11 +9,11 @@ data_transforms = {
     'train': transforms.Compose([
         transforms.RandomCrop(480),
         transforms.ToTensor(),
-        # transforms.Normalize([.5, .5, .5], [.5, .5, .5])
+        transforms.Normalize([.5, .5, .5], [.5, .5, .5])
     ]),
     'test': transforms.Compose([
         transforms.ToTensor(),
-        # transforms.Normalize([.5, .5, .5], [.5, .5, .5])
+        transforms.Normalize([.5, .5, .5], [.5, .5, .5])
     ]),
 }
 
@@ -72,8 +72,12 @@ class UnpairedDataModule(pl.LightningDataModule):
         self.setup()
 
     def setup(self):
-        train_len = int(self.split[0] * len(self.dataset))
-        val_len = int(self.split[1] * len(self.dataset))
+        # train_len = int(self.split[0] * len(self.dataset))
+        # val_len = int(self.split[1] * len(self.dataset))
+        # test_len = len(self.dataset) - train_len - val_len
+
+        train_len = 64 # int(self.split[0] * self.epoch_length)
+        val_len = 0 # int(self.split[1] * self.epoch_length)
         test_len = len(self.dataset) - train_len - val_len
 
         self.train_dataset, self.val_dataset, self.test_dataset = random_split(self.dataset, [train_len, val_len, test_len])

@@ -27,7 +27,7 @@ class UnityDataset(Dataset):
         self.crop_size = crop_size
         self.transforms = Transform(self.resize, self.crop_size)
 
-        self.cat = False
+        self.cat = cat
 
     def __del__(self):
         # Make sure to close the socket connection when the dataset is deleted
@@ -48,7 +48,7 @@ class UnityDataset(Dataset):
         data = self.transforms(data)
 
         if self.cat:
-            data = torch.cat(data, dim=0)
+            data = [torch.cat([data[i] for i in self.cat], dim=0)[:4]]
 
         return data
 
