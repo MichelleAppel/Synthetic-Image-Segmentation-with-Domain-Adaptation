@@ -1,5 +1,5 @@
 train:
-  epochs: 500
+  epochs: 2
   gpus: 1
   name: "test"
 
@@ -8,7 +8,7 @@ model:
   output_nc: 3
   ngf: 64
   ndf: 64
-  lr: 0.00002
+  lr: 0.002
   beta1: 0.5
   lambda_identity: 0.1
   lambda_cycle: 10

@@ -7,11 +7,13 @@ import pytorch_lightning as pl
 from torchvision.utils import make_grid
 from torchvision import transforms
 
-from src.domain_adaptation.models import patch_discriminator
-from src.domain_adaptation.models import resnet_generator
-from src.domain_adaptation.utils import ImagePool, init_weights, set_requires_grad
+from src.domain_adaptation.cyclegan.models import patch_discriminator
+from src.domain_adaptation.cyclegan.models import resnet_generator
+from src.domain_adaptation.cyclegan.utils import ImagePool, init_weights, set_requires_grad
 
 import wandb
+
+from src.utils.timer import Timer
 
 class CycleGAN(pl.LightningModule):
     def __init__(self, input_nc_genX=4, output_nc_genX=3, input_nc_genY=3, output_nc_genY=4, log_interval=5):
@@ -150,7 +152,7 @@ class CycleGAN(pl.LightningModule):
             
             # Create a grid of images
             grid = make_grid(torch.vstack(images), nrow=4)  # Adjust 'nrow' as needed
-            grid = transforms.ToPILImage()(grid)
+            grid = transforms.ToPILImage()((grid + 1) / 2)
 
             # Log the grid of images to W&B
             wandb.log({"Images": wandb.Image(grid, caption="Images")})
@@ -215,11 +217,19 @@ class CycleGAN(pl.LightningModule):
 
         # Generator training step
         set_requires_grad([self.disX, self.disY], False)
-        loss_gen = self.generator_training_step(imgA, imgB, opt_gen)
+        with Timer() as t:
+            loss_gen = self.generator_training_step(imgA, imgB, opt_gen)
+
+        if self.global_step % self.log_interval == 0:
+            wandb.log({"Generator step time": t.interval})
 
         # Discriminator training step
         set_requires_grad([self.disX, self.disY], True)
-        loss_dis = self.discriminator_training_step(imgA, imgB, opt_dis)
+        with Timer() as t:
+            loss_dis = self.discriminator_training_step(imgA, imgB, opt_dis)
+
+        if self.global_step % self.log_interval == 0:
+            wandb.log({"Discriminator step time": t.interval})
 
         if self.global_step % self.log_interval == 0:
             wandb.log({"Generator loss": self.genLoss.item()}, step=batch_idx)

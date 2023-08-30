@@ -15,7 +15,7 @@ from torch.utils.data.sampler import SubsetRandomSampler
 from torchvision.io import decode_image
 
 class UnityDataset(Dataset):
-    def __init__(self, host="127.0.0.1", port=8093, epoch_length=1449, resize=(480, 640), crop_size=(480, 480), cat=False):
+    def __init__(self, host="127.0.0.1", port=8093, epoch_length=1449, resize=None, crop_size=None, cat=False):
         self.host = host
         self.port = port
         self.epoch_length = epoch_length
@@ -80,7 +80,7 @@ class UnityDataset(Dataset):
                 break  # Incomplete data received
 
             tensor_data = torch.tensor(bytearray(received_data), dtype=torch.uint8)
-            image = decode_image(tensor_data) / 255.0
+            image = decode_image(tensor_data) / 255.0 * 2 - 1
 
             if image.ndim == 2:
                 image = image.unsqueeze(0)  # Add a dimension for grayscale images

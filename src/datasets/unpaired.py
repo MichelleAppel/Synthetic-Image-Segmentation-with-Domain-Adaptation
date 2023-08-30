@@ -54,6 +54,8 @@ class UnpairedDataset(Dataset):
         else:
             imgB = self.dirB[idxB][0]  # Get the image from dataset_B
 
+
+
         return {
             'A': imgA, 
             'B': imgB

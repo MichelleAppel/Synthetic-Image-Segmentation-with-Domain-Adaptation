@@ -112,7 +112,7 @@ class BDSD500Dataset(Dataset):
     def __getitem__(self, idx):
         # Open the image file
         image_path = self.image_paths[idx]
-        image = read_image(image_path).to(torch.float32) / 255.0
+        image = read_image(image_path).to(torch.float32) / 255.0 * 2 - 1
 
         # Open the edges file
         edges_path = self.edges_paths[idx]
