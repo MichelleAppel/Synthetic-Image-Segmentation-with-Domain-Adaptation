@@ -27,11 +27,18 @@ def main(cfg: DictConfig) -> None:
     # profiler = pl.profilers.AdvancedProfiler(dirpath='.', filename='results.txt')
     trainer = pl.Trainer(logger=wandb_logger, max_epochs=cfg.train.epochs, devices=cfg.train.gpus, log_every_n_steps=5)
 
-    # Create datasets
-    # dataset = BDSD500Dataset(cfg.data.root_bdsd500, resize=tuple(cfg.data.resize), crop_size=tuple(cfg.data.crop_size))
-    # dataset = UnityDataset(resize=tuple(cfg.data.resize), crop_size=tuple(cfg.data.crop_size)) #, cat=(0,2))
-    dataset = NYUDv2Dataset(cfg.data.root_nyudv2, resize=tuple(cfg.data.resize), crop_size=tuple(cfg.data.crop_size))
-    data_module = NYUDv2DataModule(dataset, batch_size=cfg.data.batch_size)
+    # Create dataset
+    if cfg.data.dataset == "bdsd500":
+        dataset = BDSD500Dataset(cfg.data.root_bdsd500, resize=tuple(cfg.data.resize), crop_size=tuple(cfg.data.crop_size))
+        data_module = BDSD500DataModule(dataset, batch_size=cfg.data.batch_size)
+    elif cfg.data.dataset == "nyudv2":
+        dataset = NYUDv2Dataset(cfg.data.root_nyudv2, resize=False, crop_size=tuple(cfg.data.crop_size))
+        data_module = NYUDv2DataModule(dataset, batch_size=cfg.data.batch_size)
+    elif cfg.data.dataset == "unity":
+        dataset = UnityDataset(crop_size=tuple(cfg.data.crop_size))
+        data_module = UnityDataModule(dataset, batch_size=cfg.data.batch_size)
+    else:
+        raise ValueError("Invalid dataset")
 
     # Train the model
     trainer.fit(model, data_module.train_dataloader(), data_module.val_dataloader()) #, ckpt_path = r"C:\Users\appel\Documents\Project\synthetic-image-segmentation\outputs\2023-08-01\16-10-02\CycleGAN\sazmzqw3\checkpoints\epoch=348-step=11168.ckpt")

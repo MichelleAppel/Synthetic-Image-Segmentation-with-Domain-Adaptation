@@ -50,6 +50,9 @@ class UnityDataset(Dataset):
         if self.cat:
             data = [torch.cat([data[i] for i in self.cat], dim=0)[:4]]
 
+        data[0] = data[0] / 255.0 * 2 - 1
+        data[1] = data[1][0, :, :].unsqueeze(0) / 255.0 
+
         return data
 
     def _receive_images(self):
@@ -80,7 +83,7 @@ class UnityDataset(Dataset):
                 break  # Incomplete data received
 
             tensor_data = torch.tensor(bytearray(received_data), dtype=torch.uint8)
-            image = decode_image(tensor_data) / 255.0 * 2 - 1
+            image = decode_image(tensor_data)
 
             if image.ndim == 2:
                 image = image.unsqueeze(0)  # Add a dimension for grayscale images

@@ -216,9 +216,10 @@ class BDCN(pl.LightningModule):
         return [p1_1, p2_1, p3_1, p4_1, p5_1, p1_2, p2_2, p3_2, p4_2, p5_2, fuse]
 
     def training_step(self, batch, batch_idx):
-        image, label = batch
-        out = self(image)
+        image, label = batch[0], batch[1]
 
+        out = self(image)
+        
         loss = self.combined_loss(out, label)
 
         if self.global_step % self.log_interval == 0:
