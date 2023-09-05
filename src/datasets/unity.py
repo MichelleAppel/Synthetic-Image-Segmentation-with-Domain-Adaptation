@@ -47,12 +47,14 @@ class UnityDataset(Dataset):
         # Apply transforms
         data = self.transforms(data)
 
+        if len(data) > 1:
+            data[1] = data[1][0, :, :].unsqueeze(0) / 255.0 
+
         if self.cat:
-            data = [torch.cat([data[i] for i in self.cat], dim=0)[:4]]
+            data[self.cat[0]] = torch.cat([data[i] for i in self.cat], dim=0)[:4]
 
         data[0] = data[0] / 255.0 * 2 - 1
-        data[1] = data[1][0, :, :].unsqueeze(0) / 255.0 
-
+        
         return data
 
     def _receive_images(self):

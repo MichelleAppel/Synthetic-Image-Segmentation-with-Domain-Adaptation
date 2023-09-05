@@ -1,10 +1,10 @@
 train:
-  epochs: 2
+  epochs: 20
   gpus: 1
-  name: "test"
+  name: "unity - nyudv2 128"
 
 model:
-  input_nc: 3
+  input_nc: 4
   output_nc: 3
   ngf: 64
   ndf: 64
@@ -14,11 +14,14 @@ model:
   lambda_cycle: 10
 
 data:
-  batch_size: 4
+  batch_size: 8
   num_workers: 0
   shuffle: True
   resize: [128, 128]
-  crop_size: [128, 128]
+  crop_size: [64, 64]
 
   root_nyudv2: "C:\\Users\\appel\\Documents\\Project\\synthetic-image-segmentation\\data\\real\\nyudv2"
   root_bdsd500: "C:\\Users\\appel\\Documents\\Project\\synthetic-image-segmentation\\data\\real\\bdsd500"
+
+  dataset_a : "unity"
+  dataset_b : "nyudv2"

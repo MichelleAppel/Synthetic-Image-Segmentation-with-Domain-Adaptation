@@ -27,13 +27,14 @@ def main(cfg: DictConfig) -> None:
     # profiler = pl.profilers.AdvancedProfiler(dirpath='.', filename='results.txt')
     trainer = pl.Trainer(logger=wandb_logger, max_epochs=cfg.train.epochs, devices=cfg.train.gpus, log_every_n_steps=5)
 
-    # Create datasets
-    # dataset_a = BDSD500Dataset(cfg.data.root_bdsd500, resize=tuple(cfg.data.resize), crop_size=tuple(cfg.data.crop_size))
-    dataset_a = UnityDataset(resize=tuple(cfg.data.resize), crop_size=tuple(cfg.data.crop_size)) #, cat=(0,2))
-    dataset_b = NYUDv2Dataset(cfg.data.root_nyudv2, resize=tuple(cfg.data.resize), crop_size=tuple(cfg.data.crop_size))
+    # select datasets from config
+
+    datasets = {"unity": UnityDataset(resize=tuple(cfg.data.resize), crop_size=tuple(cfg.data.crop_size), cat=(0,2)),
+                "nyudv2": NYUDv2Dataset(cfg.data.root_nyudv2, resize=tuple(cfg.data.resize), crop_size=tuple(cfg.data.crop_size)),
+                "bdsd500": BDSD500Dataset(cfg.data.root_bdsd500, resize=tuple(cfg.data.resize), crop_size=tuple(cfg.data.crop_size))}
 
     # Create unpaired dataset
-    unpaired_dataset = UnpairedDataset(dataset_a, dataset_b, mode='train')
+    unpaired_dataset = UnpairedDataset(datasets[cfg.data.dataset_a], datasets[cfg.data.dataset_b], mode='train')
 
     # Create data module
     data_module = UnpairedDataModule(

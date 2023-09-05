@@ -147,11 +147,20 @@ class CycleGAN(pl.LightningModule):
             self.log('gen_loss', self.genLoss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
 
             # Convert images to PyTorch tensors and add a batch dimension
-            images = [imgA[0].unsqueeze(0)[:, :3, :, :], fakeB[0].unsqueeze(0)[:, :3, :, :], cycledA[0].unsqueeze(0)[:, :3, :, :], sameA[0].unsqueeze(0)[:, :3, :, :], 
-                    imgB[0].unsqueeze(0)[:, :3, :, :], fakeA[0].unsqueeze(0)[:, :3, :, :], cycledB[0].unsqueeze(0)[:, :3, :, :], sameB[0].unsqueeze(0)[:, :3, :, :]]
+            if imgA.shape[1] == 3:
+                nrow = 4
+                images = [imgA[0].unsqueeze(0)[:, :3, :, :], fakeB[0].unsqueeze(0)[:, :3, :, :], cycledA[0].unsqueeze(0)[:, :3, :, :], sameA[0].unsqueeze(0)[:, :3, :, :], 
+                        imgB[0].unsqueeze(0)[:, :3, :, :], fakeA[0].unsqueeze(0)[:, :3, :, :], cycledB[0].unsqueeze(0)[:, :3, :, :], sameB[0].unsqueeze(0)[:, :3, :, :]]   
+            if imgA.shape[1] == 4:
+                nrow = 6
+                zeros_depth = torch.zeros_like(imgA[0].unsqueeze(0)[:, 3:, :, :].repeat(1, 3, 1, 1))
+                images = [imgA[0].unsqueeze(0)[:, :3, :, :], imgA[0].unsqueeze(0)[:, 3:, :, :].repeat(1, 3, 1, 1), fakeB[0].unsqueeze(0)[:, :3, :, :], zeros_depth, cycledA[0].unsqueeze(0)[:, :3, :, :], sameA[0].unsqueeze(0)[:, :3, :, :], 
+                          imgB[0].unsqueeze(0)[:, :3, :, :], zeros_depth, fakeA[0].unsqueeze(0)[:, :3, :, :], fakeA[0].unsqueeze(0)[:, 3:, :, :].repeat(1,3,1,1), cycledB[0].unsqueeze(0)[:, :3, :, :], sameB[0].unsqueeze(0)[:, :3, :, :]]
+
             
+
             # Create a grid of images
-            grid = make_grid(torch.vstack(images), nrow=4)  # Adjust 'nrow' as needed
+            grid = make_grid(torch.vstack(images), nrow=nrow)  # Adjust 'nrow' as needed
             grid = transforms.ToPILImage()((grid + 1) / 2)
 
             # Log the grid of images to W&B
