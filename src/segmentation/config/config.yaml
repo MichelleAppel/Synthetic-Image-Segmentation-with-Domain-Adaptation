@@ -14,3 +14,6 @@ data:
   root_bdsd500: "C:\\Users\\appel\\Documents\\Project\\synthetic-image-segmentation\\data\\real\\bdsd500"
 
   dataset: "unity"
+
+  domain_transfer: True
+  checkpoint_path: 'C:\Users\appel\Documents\Project\synthetic-image-segmentation\outputs\2023-09-04\14-39-16\CycleGAN\rtufrsre\checkpoints\epoch=1-step=1016.ckpt'

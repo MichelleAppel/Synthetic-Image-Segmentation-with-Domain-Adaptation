@@ -10,6 +10,8 @@ from src.domain_adaptation.cyclegan.cyclegan import CycleGAN
 from src.datasets.unity import UnityDataset, UnityDataModule
 from src.datasets.nyudv2 import NYUDv2Dataset, NYUDv2DataModule
 from src.datasets.bdsd500 import BDSD500Dataset, BDSD500DataModule
+from src.datasets.domain_transfer import DomainTransfer
+
 
 from src.segmentation.models.bdcn import BDCN
 
@@ -39,9 +41,20 @@ def main(cfg: DictConfig) -> None:
         data_module = UnityDataModule(dataset, batch_size=cfg.data.batch_size)
     else:
         raise ValueError("Invalid dataset")
+    
+    if cfg.data.domain_transfer:
+        checkpoint_path = cfg.data.checkpoint_path
+        cycleGAN = CycleGAN()
+        domain_transfer = DomainTransfer(cycleGAN, checkpoint_path)
+
+        train_dataloader = domain_transfer.generate(data_module.train_dataloader())
+        val_dataloader = domain_transfer.generate(data_module.val_dataloader())
+    else:
+        train_dataloader = data_module.train_dataloader()
+        val_dataloader = data_module.val_dataloader()
 
     # Train the model
-    trainer.fit(model, data_module.train_dataloader(), data_module.val_dataloader()) #, ckpt_path = r"C:\Users\appel\Documents\Project\synthetic-image-segmentation\outputs\2023-08-01\16-10-02\CycleGAN\sazmzqw3\checkpoints\epoch=348-step=11168.ckpt")
+    trainer.fit(model, train_dataloader, val_dataloader) #, ckpt_path = r"C:\Users\appel\Documents\Project\synthetic-image-segmentation\outputs\2023-08-01\16-10-02\CycleGAN\sazmzqw3\checkpoints\epoch=348-step=11168.ckpt")
 
 if __name__ == "__main__":
     main()

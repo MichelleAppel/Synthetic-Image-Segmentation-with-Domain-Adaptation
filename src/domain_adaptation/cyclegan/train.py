@@ -29,7 +29,7 @@ def main(cfg: DictConfig) -> None:
 
     # select datasets from config
 
-    datasets = {"unity": UnityDataset(resize=tuple(cfg.data.resize), crop_size=tuple(cfg.data.crop_size), cat=(0,2)),
+    datasets = {"unity": UnityDataset(resize=tuple(cfg.data.resize), crop_size=tuple(cfg.data.crop_size)), #, cat=(0,2)),
                 "nyudv2": NYUDv2Dataset(cfg.data.root_nyudv2, resize=tuple(cfg.data.resize), crop_size=tuple(cfg.data.crop_size)),
                 "bdsd500": BDSD500Dataset(cfg.data.root_bdsd500, resize=tuple(cfg.data.resize), crop_size=tuple(cfg.data.crop_size))}
 

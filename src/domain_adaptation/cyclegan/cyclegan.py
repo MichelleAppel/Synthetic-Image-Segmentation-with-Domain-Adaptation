@@ -16,7 +16,7 @@ import wandb
 from src.utils.timer import Timer
 
 class CycleGAN(pl.LightningModule):
-    def __init__(self, input_nc_genX=4, output_nc_genX=3, input_nc_genY=3, output_nc_genY=4, log_interval=5):
+    def __init__(self, input_nc_genX=3, output_nc_genX=3, input_nc_genY=3, output_nc_genY=3, log_interval=5):
         super().__init__()
         # generator pair
         self.genX = resnet_generator.get_generator(input_nc=input_nc_genX, output_nc=output_nc_genX)
@@ -245,6 +245,23 @@ class CycleGAN(pl.LightningModule):
             wandb.log({"Discriminator loss": self.disLoss.item()}, step=batch_idx)
 
         return {'loss': loss_gen + loss_dis}
+    
+    def forward(self, x, direction="AtoB"):
+        """Run the generator in the specified direction.
+        
+        Args:
+            x (torch.Tensor): Input tensor (image)
+            direction (str): Direction for translation. "AtoB" or "BtoA"
+
+        Returns:
+            torch.Tensor: Translated image
+        """
+        if direction == "AtoB":
+            return self.genX(x)
+        elif direction == "BtoA":
+            return self.genY(x)
+        else:
+            raise ValueError("Invalid direction for translation. Choose 'AtoB' or 'BtoA'")
 
 if __name__ == '__main__':
     model = CycleGAN()

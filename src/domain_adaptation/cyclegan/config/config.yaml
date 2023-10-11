@@ -1,10 +1,13 @@
 train:
   epochs: 20
   gpus: 1
-  name: "unity - nyudv2 128"
+  name: "unity - nyudv2 64"
+
+test:
+  checkpoint_path: "C:\\Users\\appel\\Documents\\Project\\synthetic-image-segmentation\\outputs\\2023-09-04\\15-26-25\\CycleGAN\\i10r3an6\\checkpoints\\epoch=14-step=3810.ckpt"
 
 model:
-  input_nc: 4
+  input_nc: 3
   output_nc: 3
   ngf: 64
   ndf: 64

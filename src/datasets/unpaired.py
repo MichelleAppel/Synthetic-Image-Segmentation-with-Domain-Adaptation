@@ -73,7 +73,7 @@ class UnpairedDataModule(pl.LightningDataModule):
 
         self.setup()
 
-    def setup(self):
+    def setup(self, stage=None):
         train_len = int(self.split[0] * len(self.dataset))
         val_len = int(self.split[1] * len(self.dataset))
         test_len = len(self.dataset) - train_len - val_len
@@ -91,4 +91,7 @@ class UnpairedDataModule(pl.LightningDataModule):
         return DataLoader(self.val_dataset, batch_size=self.batch_size, num_workers=self.num_workers)
     
     def test_dataloader(self):
+        return DataLoader(self.test_dataset, batch_size=self.batch_size, num_workers=self.num_workers)
+    
+    def predict_dataloader(self):
         return DataLoader(self.test_dataset, batch_size=self.batch_size, num_workers=self.num_workers)
