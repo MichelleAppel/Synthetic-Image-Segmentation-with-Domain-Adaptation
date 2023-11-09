@@ -98,6 +98,14 @@ class BDSD500Dataset(Dataset):
         return edges
     
     def setup(self):
+        # Download the dataset if the path doesn't exist
+        if not os.path.exists(os.path.join(self.data_root, self.filename)):
+            self.download()
+
+        # Load the dataset if not already loaded
+        if not os.path.exists(os.path.join(self.data_root, "images")):
+            self.prepare_data()
+
         # Define file paths
         image_dir = os.path.join(self.data_root, "images")
         edges_dir = os.path.join(self.data_root, "edges")

@@ -167,3 +167,4 @@ notebooks/
 #.idea/
 
 outputs/
+wandb/

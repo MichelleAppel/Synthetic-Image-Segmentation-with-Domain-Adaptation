@@ -18,23 +18,29 @@ def main(cfg: DictConfig) -> None:
 
     # Create model
     model = CycleGAN(input_nc_genX=cfg.model.input_nc, output_nc_genX=cfg.model.output_nc, input_nc_genY=cfg.model.output_nc, output_nc_genY=cfg.model.input_nc, log_interval=5)
-    # model =
 
     # Create a PyTorch Lightning trainer with the generation callback
-    wandb_logger = WandbLogger(project='CycleGAN', config=cfg, name=cfg.train.name)
-    wandb_logger.watch(model)
+    wandb_logger = WandbLogger(
+    name=cfg.train.name,
+    project='CycleGAN',
+    config=dict(cfg)
+)
 
     # profiler = pl.profilers.AdvancedProfiler(dirpath='.', filename='results.txt')
     trainer = pl.Trainer(logger=wandb_logger, max_epochs=cfg.train.epochs, devices=cfg.train.gpus, log_every_n_steps=5)
 
-    # select datasets from config
-
-    datasets = {"unity": UnityDataset(resize=tuple(cfg.data.resize), crop_size=tuple(cfg.data.crop_size)), #, cat=(0,2)),
-                "nyudv2": NYUDv2Dataset(cfg.data.root_nyudv2, resize=tuple(cfg.data.resize), crop_size=tuple(cfg.data.crop_size)),
-                "bdsd500": BDSD500Dataset(cfg.data.root_bdsd500, resize=tuple(cfg.data.resize), crop_size=tuple(cfg.data.crop_size))}
+    def get_dataset(dataset_name):
+        if dataset_name == "unity":
+            return UnityDataset(resize=tuple(cfg.data.resize), crop_size=tuple(cfg.data.crop_size)), #, cat=(0,2))
+        elif dataset_name == "nyudv2":
+            return NYUDv2Dataset(cfg.data.root_nyudv2, resize=tuple(cfg.data.resize), crop_size=tuple(cfg.data.crop_size))
+        elif dataset_name == "bdsd500":
+            return BDSD500Dataset(cfg.data.root_bdsd500, resize=tuple(cfg.data.resize), crop_size=tuple(cfg.data.crop_size))
+        else:
+            raise ValueError("Dataset {} not found".format(dataset_name))
 
     # Create unpaired dataset
-    unpaired_dataset = UnpairedDataset(datasets[cfg.data.dataset_a], datasets[cfg.data.dataset_b], mode='train')
+    unpaired_dataset = UnpairedDataset(get_dataset(cfg.data.dataset_a), get_dataset(cfg.data.dataset_b), mode='train')
 
     # Create data module
     data_module = UnpairedDataModule(
@@ -45,7 +51,7 @@ def main(cfg: DictConfig) -> None:
     )
 
     # Train the model
-    trainer.fit(model, data_module.train_dataloader(), data_module.val_dataloader()) #, ckpt_path = r"C:\Users\appel\Documents\Project\synthetic-image-segmentation\outputs\2023-08-01\16-10-02\CycleGAN\sazmzqw3\checkpoints\epoch=348-step=11168.ckpt")
+    trainer.fit(model, data_module.train_dataloader(), data_module.val_dataloader())
 
 if __name__ == "__main__":
     main()
