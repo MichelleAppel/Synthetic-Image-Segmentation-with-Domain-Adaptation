@@ -1,5 +1,6 @@
 import os
 os.environ['KMP_DUPLICATE_LIB_OK']='True'
+os.environ['PYTORCH_CUDA_ALLOC_CONF'] = "max_split_size_mb:128"
 
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import WandbLogger
@@ -20,18 +21,21 @@ def main(cfg: DictConfig) -> None:
     model = CycleGAN(input_nc_genX=cfg.model.input_nc, output_nc_genX=cfg.model.output_nc, input_nc_genY=cfg.model.output_nc, output_nc_genY=cfg.model.input_nc, log_interval=5)
 
     # Create a PyTorch Lightning trainer with the generation callback
-    wandb_logger = WandbLogger(
-    name=cfg.train.name,
-    project='CycleGAN',
-    config=dict(cfg)
-)
+    if cfg.wandb:
+        logger = WandbLogger(
+            name=cfg.train.name,
+            project='CycleGAN',
+            config=dict(cfg)
+        )
+    else:
+        logger = None
 
     # profiler = pl.profilers.AdvancedProfiler(dirpath='.', filename='results.txt')
-    trainer = pl.Trainer(logger=wandb_logger, max_epochs=cfg.train.epochs, devices=cfg.train.gpus, log_every_n_steps=5)
+    trainer = pl.Trainer(logger=logger, max_epochs=cfg.train.epochs, devices=cfg.train.gpus, log_every_n_steps=5)
 
     def get_dataset(dataset_name):
         if dataset_name == "unity":
-            return UnityDataset(resize=tuple(cfg.data.resize), crop_size=tuple(cfg.data.crop_size)), #, cat=(0,2))
+            return UnityDataset(resize=tuple(cfg.data.resize), crop_size=tuple(cfg.data.crop_size)) #, cat=(0,2))
         elif dataset_name == "nyudv2":
             return NYUDv2Dataset(cfg.data.root_nyudv2, resize=tuple(cfg.data.resize), crop_size=tuple(cfg.data.crop_size))
         elif dataset_name == "bdsd500":
