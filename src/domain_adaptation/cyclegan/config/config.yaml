@@ -3,6 +3,8 @@ train:
   gpus: [1]
   name: "unity - nyudv2 512/256"
   experiment: full size
+  checkpoint_path: D:\\Appel\\Improved Edge detection\\Synthetic-Image-Segmentation-with-Domain-Adaptation\\outputs\\2023-11-09\\20-10-06\\CycleGAN\\wf98wob4\\checkpoints\\epoch=8-step=18252.ckpt
+  checkpount_epoch: 8
 
 test:
   checkpoint_path: None
@@ -20,11 +22,11 @@ model:
   lambda_cycle: 10
 
 data:
-  batch_size: 4
+  batch_size: 1
   num_workers: 0
   shuffle: True
   resize: [512, 512]
-  crop_size: [256, 256]
+  crop_size: [512, 512]
 
   root_nyudv2: "D:\\Appel\\Improved Edge detection\\Synthetic-Image-Segmentation-with-Domain-Adaptation\\data\\real\\nyudv2"
   root_bdsd500: "D:\\Appel\\Improved Edge detection\\Synthetic-Image-Segmentation-with-Domain-Adaptation\\data\\real\\bdsd500"
