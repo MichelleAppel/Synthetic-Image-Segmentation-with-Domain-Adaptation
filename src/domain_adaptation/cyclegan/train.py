@@ -56,7 +56,7 @@ def main(cfg: DictConfig) -> None:
 
     # Train the model
     trainer.fit(model, data_module.train_dataloader(), data_module.val_dataloader(),
-                ckpt_path=cfg.train.checkpoint_path, ckpt_epoch=cfg.train.checkpoint_epoch)
+                ckpt_path=cfg.train.checkpoint_path)
 
 if __name__ == "__main__":
     main()

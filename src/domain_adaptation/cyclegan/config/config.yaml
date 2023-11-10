@@ -4,7 +4,6 @@ train:
   name: "unity - nyudv2 512/256"
   experiment: full size
   checkpoint_path: D:\\Appel\\Improved Edge detection\\Synthetic-Image-Segmentation-with-Domain-Adaptation\\outputs\\2023-11-09\\20-10-06\\CycleGAN\\wf98wob4\\checkpoints\\epoch=8-step=18252.ckpt
-  checkpount_epoch: 8
 
 test:
   checkpoint_path: None
