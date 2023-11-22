@@ -16,4 +16,4 @@ data:
   dataset: "unity"
 
   domain_transfer: True
-  checkpoint_path: 'C:\Users\appel\Documents\Project\synthetic-image-segmentation\outputs\2023-09-04\14-39-16\CycleGAN\rtufrsre\checkpoints\epoch=1-step=1016.ckpt'
+  checkpoint_path: 'D:\Appel\Improved Edge detection\Synthetic-Image-Segmentation-with-Domain-Adaptation\outputs\2023-11-16\18-17-50\CycleGAN\1ycnhgnn\checkpoints\epoch=199-step=405600.ckpt'

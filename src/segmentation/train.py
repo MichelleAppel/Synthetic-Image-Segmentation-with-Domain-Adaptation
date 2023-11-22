@@ -22,12 +22,14 @@ def main(cfg: DictConfig) -> None:
     # Create model
     model = BDCN()
 
-    # Create a PyTorch Lightning trainer with the generation callback
-    wandb_logger = WandbLogger(project='Segmentation', config=cfg, name=cfg.train.name)
-    wandb_logger.watch(model)
+    logger = WandbLogger(
+        name=cfg.train.name,
+        project='Segmentation',
+        config=dict(cfg)
+    )
 
     # profiler = pl.profilers.AdvancedProfiler(dirpath='.', filename='results.txt')
-    trainer = pl.Trainer(logger=wandb_logger, max_epochs=cfg.train.epochs, devices=cfg.train.gpus, log_every_n_steps=5)
+    trainer = pl.Trainer(logger=logger, max_epochs=cfg.train.epochs, devices=cfg.train.gpus, log_every_n_steps=5)
 
     # Create dataset
     if cfg.data.dataset == "bdsd500":
@@ -54,7 +56,7 @@ def main(cfg: DictConfig) -> None:
         val_dataloader = data_module.val_dataloader()
 
     # Train the model
-    trainer.fit(model, train_dataloader, val_dataloader) #, ckpt_path = r"C:\Users\appel\Documents\Project\synthetic-image-segmentation\outputs\2023-08-01\16-10-02\CycleGAN\sazmzqw3\checkpoints\epoch=348-step=11168.ckpt")
+    trainer.fit(model, train_dataloader, val_dataloader) #, ckpt_path = r"D:\Appel\Improved Edge detection\Synthetic-Image-Segmentation-with-Domain-Adaptation\outputs\2023-11-16\18-17-50\CycleGAN\1ycnhgnn\checkpoints\epoch=199-step=405600.ckpt")
 
 if __name__ == "__main__":
     main()

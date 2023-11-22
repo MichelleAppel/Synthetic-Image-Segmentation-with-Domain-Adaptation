@@ -1,10 +1,9 @@
 train:
-  epochs: 500
+  epochs: 200
   gpus: [1]
-  name: "unity - nyudv2 512/256"
+  name: "unity - nyudv2 512/512 pt 9"
   experiment: full size
-  checkpoint_path: D:\\Appel\\Improved Edge detection\\Synthetic-Image-Segmentation-with-Domain-Adaptation\\outputs\\2023-11-09\\20-10-06\\CycleGAN\\wf98wob4\\checkpoints\\epoch=8-step=18252.ckpt
-
+  checkpoint_path: D:\\Appel\\Improved Edge detection\\Synthetic-Image-Segmentation-with-Domain-Adaptation\\outputs\\2023-11-16\\09-02-11\\CycleGAN\\a6ys3bdk\\checkpoints\\epoch=85-step=174408.ckpt
 test:
   checkpoint_path: None
 
@@ -15,7 +14,7 @@ model:
   output_nc: 3
   ngf: 64
   ndf: 64
-  lr: 0.002
+  lr: 0.0002
   beta1: 0.5
   lambda_identity: 0.1
   lambda_cycle: 10
