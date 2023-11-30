@@ -15,6 +15,7 @@ from src.datasets.transforms import Transform
 
 import pytorch_lightning as pl
 
+from skimage.morphology import binary_dilation, binary_erosion, disk, thin
 
 class NYUDv2Dataset(Dataset):
     def __init__(self, data_root, resize=(480, 640), crop_size=(480, 480), border=4):
@@ -85,9 +86,12 @@ class NYUDv2Dataset(Dataset):
             edges_img = Image.fromarray(edges.astype(np.uint8) * 255)
             edges_img.save(os.path.join(self.data_root, "edges", f"{i:05d}.png"))
 
-    def compute_edges(self, instance):
+    def compute_edges(self, instance, disk_size=3):
         edges = find_boundaries(instance, mode='outer').astype(np.uint8)
-        return edges
+        dilated_edges = binary_dilation(edges, disk(disk_size))
+        eroded_edges = binary_erosion(dilated_edges, disk(disk_size))
+        thinned_edges = thin(eroded_edges)
+        return thinned_edges
 
     def setup(self):
         # Download the dataset if not already downloaded

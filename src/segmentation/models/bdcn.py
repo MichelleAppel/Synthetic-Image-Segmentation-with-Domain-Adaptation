@@ -213,7 +213,7 @@ class BDCN(pl.LightningModule):
 
         fuse = self.fuse(torch.cat([p1_1, p2_1, p3_1, p4_1, p5_1, p1_2, p2_2, p3_2, p4_2, p5_2], 1))
 
-        return [p1_1, p2_1, p3_1, p4_1, p5_1, p1_2, p2_2, p3_2, p4_2, p5_2, fuse]
+        return [p1_1, p2_1, p3_1, p4_1, p5_1, p1_2, p2_2, p3_2, p4_2, p5_2, torch.sigmoid(fuse)]
 
     def training_step(self, batch, batch_idx):
         image, label = batch[0], batch[1]

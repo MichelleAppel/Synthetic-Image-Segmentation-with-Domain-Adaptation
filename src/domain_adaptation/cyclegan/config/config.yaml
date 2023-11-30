@@ -23,8 +23,8 @@ data:
   batch_size: 1
   num_workers: 0
   shuffle: True
-  resize: [512, 512]
-  crop_size: [512, 512]
+  resize: None
+  crop_size: [448, 448]
 
   root_nyudv2: "D:\\Appel\\Improved Edge detection\\Synthetic-Image-Segmentation-with-Domain-Adaptation\\data\\real\\nyudv2"
   root_bdsd500: "D:\\Appel\\Improved Edge detection\\Synthetic-Image-Segmentation-with-Domain-Adaptation\\data\\real\\bdsd500"

@@ -12,7 +12,6 @@ from src.datasets.nyudv2 import NYUDv2Dataset, NYUDv2DataModule
 from src.datasets.bdsd500 import BDSD500Dataset, BDSD500DataModule
 from src.datasets.domain_transfer import DomainTransfer
 
-
 from src.segmentation.models.bdcn import BDCN
 
 @hydra.main(config_path="config", config_name="config", version_base="1.1.0")
@@ -56,7 +55,7 @@ def main(cfg: DictConfig) -> None:
         val_dataloader = data_module.val_dataloader()
 
     # Train the model
-    trainer.fit(model, train_dataloader, val_dataloader) #, ckpt_path = r"D:\Appel\Improved Edge detection\Synthetic-Image-Segmentation-with-Domain-Adaptation\outputs\2023-11-16\18-17-50\CycleGAN\1ycnhgnn\checkpoints\epoch=199-step=405600.ckpt")
+    trainer.fit(model, train_dataloader, val_dataloader)
 
 if __name__ == "__main__":
     main()
