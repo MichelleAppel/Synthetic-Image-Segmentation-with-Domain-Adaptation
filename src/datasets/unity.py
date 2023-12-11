@@ -15,7 +15,7 @@ from torch.utils.data.sampler import SubsetRandomSampler
 from torchvision.io import decode_image
 
 class UnityDataset(Dataset):
-    def __init__(self, host="127.0.0.1", port=8093, epoch_length=100000, resize=None, crop_size=None, cat=False):
+    def __init__(self, host="127.0.0.1", port=8093, epoch_length=1449, resize=None, crop_size=None, cat=False):
         self.host = host
         self.port = port
         self.epoch_length = epoch_length

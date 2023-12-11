@@ -1,5 +1,5 @@
 train:
-  name: NYUDv2
+  name: Unity 448
   epochs: 100
   gpus: [1]
 
@@ -13,7 +13,7 @@ data:
   root_nyudv2: "D:\\Appel\\Improved Edge detection\\Synthetic-Image-Segmentation-with-Domain-Adaptation\\data\\real\\nyudv2"
   root_bdsd500: "D:\\Appel\\Improved Edge detection\\Synthetic-Image-Segmentation-with-Domain-Adaptation\\data\\real\\bdsd500"
 
-  dataset: "nyudv2"
+  dataset: "unity"
 
-  domain_transfer: False
-  checkpoint_path: 'D:\Appel\Improved Edge detection\Synthetic-Image-Segmentation-with-Domain-Adaptation\outputs\2023-11-16\18-17-50\CycleGAN\1ycnhgnn\checkpoints\epoch=199-step=405600.ckpt'
+  domain_transfer: True
+  checkpoint_path: 'D:\\Appel\\Improved Edge detection\\Synthetic-Image-Segmentation-with-Domain-Adaptation\\outputs\\2023-12-08\\17-32-43\\CycleGAN\\49zod04z\\checkpoints\\epoch=99-step=202800.ckpt'

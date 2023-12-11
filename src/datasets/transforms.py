@@ -15,7 +15,7 @@ class Transform:
         if self.resize:
             # Apply the resize to both images
             for idx in range(len(data)):
-                data[idx] = F.interpolate(data[idx].unsqueeze(0), size=self.resize, mode='bilinear', align_corners=False).squeeze(0)
+                data[idx] = F.interpolate(data[idx].unsqueeze(0), scale_factor=1, mode='bilinear', align_corners=False).squeeze(0)
 
         if self.crop_size:
             i, j = self.get_params(data[0], output_size=self.crop_size)

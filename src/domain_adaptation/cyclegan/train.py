@@ -35,7 +35,7 @@ def main(cfg: DictConfig) -> None:
 
     def get_dataset(dataset_name):
         if dataset_name == "unity":
-            return UnityDataset(epoch_length=50000, resize=tuple(cfg.data.resize), crop_size=tuple(cfg.data.crop_size)) #, cat=(0,2))
+            return UnityDataset(epoch_length=1449, resize=tuple(cfg.data.resize), crop_size=tuple(cfg.data.crop_size)) #, cat=(0,2))
         elif dataset_name == "nyudv2":
             return NYUDv2Dataset(cfg.data.root_nyudv2, resize=tuple(cfg.data.resize), crop_size=tuple(cfg.data.crop_size))
         elif dataset_name == "bdsd500":
